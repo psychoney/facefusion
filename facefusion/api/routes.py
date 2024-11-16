@@ -9,6 +9,7 @@ from facefusion.core import conditional_process
 from facefusion.temp_helper import clear_temp_directory
 from facefusion.uis.components.face_swapper_options import update_face_swapper_pixel_boost
 from facefusion.uis.components.face_selector import update_face_selector_mode
+from facefusion.face_detector import pre_check
 
 app = FastAPI()
 
@@ -39,7 +40,10 @@ async def process_media(
         # 设置处理器
         state_manager.set_item('processors', ['face_swapper'])
         # 设置执行提供程序
-        state_manager.set_item('execution_providers', ['tensorrt'])
+        state_manager.set_item('execution_providers', ['cuda'])
+        # 确保模型文件存在
+        if not pre_check():
+            raise HTTPException(status_code=500, detail="模型文件下载失败") 
         # 设置人脸检测参数
         state_manager.set_item('face_detector_model', 'retinaface')
         state_manager.set_item('face_detector_size', '640x640')
