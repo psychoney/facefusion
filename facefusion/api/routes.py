@@ -1,18 +1,19 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import FileResponse
 import shutil
 import os
 from typing import List
-import subprocess
-import tempfile
 from pathlib import Path
+import traceback
 
 from facefusion.uis.components.face_swapper_options import update_face_swapper_pixel_boost
 from facefusion.uis.components.face_selector import update_face_selector_mode
 from facefusion.processors.modules.face_swapper import process_image, process_video
 from facefusion.core import conditional_append_reference_faces
 from facefusion.content_analyser import analyse_frame
-from facefusion.vision import read_static_image, read_static_images
+from facefusion.vision import read_static_image, read_static_images, detect_faces
+from facefusion.face_store import get_reference_faces
+from facefusion.face_analyser import get_one_face, get_many_faces
 
 app = FastAPI(title="FaceFusion API")
 
@@ -36,16 +37,47 @@ async def swap_face_image(
         with open(target_path, "wb") as f:
             shutil.copyfileobj(target.file, f)
 
+        # 验证源图片中是否包含人脸
+        source_frame = read_static_image(str(source_path))
+        if source_frame is None:
+            raise HTTPException(status_code=400, detail="无法读取源图片")
+            
+        source_faces = get_many_faces([source_frame])
+        if not source_faces:
+            raise HTTPException(status_code=400, detail="在源图片中未检测到人脸")
+
+        # 验证目标图片中是否包含人脸
+        target_frame = read_static_image(str(target_path))
+        if target_frame is None:
+            raise HTTPException(status_code=400, detail="无法读取目标图片")
+            
+        target_faces = get_many_faces([target_frame])
+        if not target_faces:
+            raise HTTPException(status_code=400, detail="在目标图片中未检测到人脸")
+
         # 设置换脸参数
         update_face_swapper_pixel_boost("2")
         update_face_selector_mode("one")
         
-        # 处理图片换脸
-        process_image([str(source_path)], str(target_path), str(output_path))
+        try:
+            # 处理图片换脸
+            process_image([str(source_path)], str(target_path), str(output_path))
+            
+            if not output_path.exists():
+                raise HTTPException(status_code=500, detail="处理后的图片未生成")
+                
+            return FileResponse(
+                output_path,
+                media_type="image/jpeg",
+                filename=f"output_{target.filename}"
+            )
+            
+        except Exception as e:
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"换脸处理失败: {str(e)}")
         
-        # 返回处理后的图片
-        return FileResponse(output_path)
-        
+    except HTTPException as he:
+        raise he
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
