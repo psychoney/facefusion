@@ -11,6 +11,8 @@ from facefusion.uis.components.face_swapper_options import update_face_swapper_p
 from facefusion.uis.components.face_selector import update_face_selector_mode
 from facefusion.face_detector import pre_check as detector_pre_check
 from facefusion.face_recognizer import pre_check as recognizer_pre_check
+from facefusion.face_landmarker import pre_check as landmarker_pre_check
+
 app = FastAPI()
 
 TEMP_DIR = Path("temp")
@@ -42,7 +44,7 @@ async def process_media(
         # 设置执行提供程序
         state_manager.set_item('execution_providers', ['cuda'])
         # 确保模型文件存在
-        if not (detector_pre_check() and recognizer_pre_check()):
+        if not (detector_pre_check() and recognizer_pre_check() and landmarker_pre_check()):
             raise HTTPException(status_code=500, detail="模型文件下载失败")
         # 设置人脸检测参数
         state_manager.set_item('face_detector_model', 'retinaface')
