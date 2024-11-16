@@ -47,6 +47,7 @@ async def swap_face_image(
         return FileResponse(output_path)
         
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # 清理临时文件
@@ -100,6 +101,7 @@ async def swap_face_video(
         return FileResponse(output_path)
         
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # 清理临时文件
