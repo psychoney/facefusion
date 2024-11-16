@@ -43,7 +43,7 @@ async def process_media(
         state_manager.set_item('face_detector_model', 'retinaface')
         state_manager.set_item('face_detector_size', 'normal')
         state_manager.set_item('face_detector_score', 0.5)
-        state_manager.set_item('face_detector_angles', ['0'])
+        state_manager.set_item('face_detector_angles', [0])
         
         # 设置人脸识别参数
         state_manager.set_item('face_recognizer_model', 'arcface_inswapper')
@@ -59,11 +59,11 @@ async def process_media(
         # 设置其他必要参数
         state_manager.set_item('face_mask_types', ['box'])
         state_manager.set_item('face_mask_blur', 0.3)
-        state_manager.set_item('face_mask_padding', 0)
+        state_manager.set_item('face_mask_padding', [0, 0, 0, 0])
         state_manager.set_item('face_mask_regions', ['skin'])
         state_manager.set_item('face_selector_mode', 'one')
-        state_manager.set_item('face_swapper_model', 'inswapper_128')
-        state_manager.set_item('face_swapper_pixel_boost', '2')
+        state_manager.set_item('face_landmarker_model', '2dfan4')
+        state_manager.set_item('temp_frame_format', 'jpg')
         state_manager.set_item('video_memory_strategy', 'strict')
         
         # 处理媒体文件
