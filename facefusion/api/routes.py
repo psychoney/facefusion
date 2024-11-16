@@ -37,6 +37,7 @@ async def process_media(
         state_manager.set_item('output_path', str(output_path))
         
         # 设置处理参数
+        state_manager.set_item('processors', ['face_swapper'])  # 添加这行
         update_face_swapper_pixel_boost("2") 
         update_face_selector_mode("one")
 
