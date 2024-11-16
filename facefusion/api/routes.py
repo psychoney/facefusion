@@ -38,7 +38,8 @@ async def process_media(
         
         # 设置处理器
         state_manager.set_item('processors', ['face_swapper'])
-        
+        # 设置执行提供程序
+        state_manager.set_item('execution_providers', ['tensorrt'])
         # 设置人脸检测参数
         state_manager.set_item('face_detector_model', 'retinaface')
         state_manager.set_item('face_detector_size', '640x640')
