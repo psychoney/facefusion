@@ -41,7 +41,7 @@ async def process_media(
         
         # 设置人脸检测参数
         state_manager.set_item('face_detector_model', 'retinaface')
-        state_manager.set_item('face_detector_size', 'normal')
+        state_manager.set_item('face_detector_size', '640x640')
         state_manager.set_item('face_detector_score', 0.5)
         state_manager.set_item('face_detector_angles', [0])
         
