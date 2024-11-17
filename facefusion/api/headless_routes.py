@@ -7,13 +7,17 @@ from pathlib import Path
 import aiohttp
 import asyncio
 import tempfile
+import os
 
 from facefusion import process_manager, state_manager
 from facefusion.core import process_headless
 from facefusion.typing import Args
 
+# 创建临时和输出目录
 TEMP_DIR = Path("temp")
+OUTPUT_DIR = Path("output") 
 TEMP_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 class ProcessorType(str, Enum):
     face_swapper = 'face_swapper'
@@ -28,7 +32,6 @@ class HeadlessUrlRequest(BaseModel):
     processors: List[ProcessorType]
     source_url: Optional[HttpUrl] = None
     target_url: HttpUrl
-    output_path: str
     trim_frame_start: Optional[int] = None
     trim_frame_end: Optional[int] = None
 
@@ -52,6 +55,14 @@ async def download_file(url: HttpUrl) -> Path:
                     f.write(chunk)
             return file_path
 
+def get_output_path(filename: str) -> str:
+    """生成输出文件路径"""
+    # 生成唯一的输出文件名
+    name, ext = os.path.splitext(filename)
+    timestamp = asyncio.get_event_loop().time()
+    output_filename = f"{name}_{int(timestamp)}{ext}"
+    return str(OUTPUT_DIR / output_filename)
+
 app = FastAPI()
 
 @app.post("/headless/url")
@@ -66,11 +77,14 @@ async def headless_process_url(request: HeadlessUrlRequest):
         if request.source_url:
             source_path = await download_file(request.source_url)
             
+        # 生成输出路径
+        output_path = get_output_path(target_path.name)
+            
         # 构建参数
         args: Args = {
             'processors': request.processors,
             'target_path': str(target_path),
-            'output_path': request.output_path
+            'output_path': output_path
         }
         
         if source_path:
@@ -88,7 +102,11 @@ async def headless_process_url(request: HeadlessUrlRequest):
         if error_code != 0:
             raise HTTPException(status_code=500, detail=f"处理失败,错误码:{error_code}")
             
-        return {"message": "处理成功", "output_path": request.output_path}
+        return {
+            "message": "处理成功", 
+            "output_path": output_path,
+            "output_filename": os.path.basename(output_path)
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -102,7 +120,6 @@ async def headless_process_upload(
     processors: List[ProcessorType],
     target: UploadFile = File(...),
     source: Optional[UploadFile] = None,
-    output_path: str = Form(...),
     trim_frame_start: Optional[int] = Form(None),
     trim_frame_end: Optional[int] = Form(None)
 ):
@@ -119,6 +136,9 @@ async def headless_process_upload(
             source_path = TEMP_DIR / source.filename
             with open(source_path, "wb") as f:
                 shutil.copyfileobj(source.file, f)
+                
+        # 生成输出路径
+        output_path = get_output_path(target.filename)
                 
         # 构建参数
         args: Args = {
@@ -142,7 +162,11 @@ async def headless_process_upload(
         if error_code != 0:
             raise HTTPException(status_code=500, detail=f"处理失败,错误码:{error_code}")
             
-        return {"message": "处理成功", "output_path": output_path}
+        return {
+            "message": "处理成功", 
+            "output_path": output_path,
+            "output_filename": os.path.basename(output_path)
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
