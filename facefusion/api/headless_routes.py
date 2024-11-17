@@ -108,16 +108,13 @@ def setup_process_state(args: Args) -> None:
     # 先应用默认设置
     init_api_default_settings()
     
-    # 确保processors不为空
-    processors = args.get('processors')
-    if not processors:
-        processors = ['face_swapper']  # 设置默认处理器
-    
-    # 设置处理器
+    # 设置处理器 - 确保不为空且格式正确
+    processors = args.get('processors', ['face_swapper'])
     if isinstance(processors, list):
-        state_manager.set_item('processors', [p.value if isinstance(p, ProcessorType) else p for p in processors])
+        processor_list = [p.value if isinstance(p, ProcessorType) else p for p in processors]
     else:
-        state_manager.set_item('processors', [processors])
+        processor_list = [processors]
+    state_manager.set_item('processors', processor_list)
     
     # 设置路径
     state_manager.set_item('source_paths', [args.get('source_path')] if args.get('source_path') else [])
@@ -278,7 +275,7 @@ async def headless_process_upload(
                 
         # 构建参数
         args: Args = {
-            'processors': processors,
+            'processors': [p.value for p in processors],
             'target_path': str(target_path),
             'output_path': output_path
         }
