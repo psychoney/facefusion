@@ -46,6 +46,11 @@ class HeadlessUrlRequest(BaseModel):
     target_url: HttpUrl
     trim_frame_start: Optional[int] = None
     trim_frame_end: Optional[int] = None
+    face_enhancer_model: Optional[str] = None
+    face_enhancer_blend: Optional[int] = None
+    output_video_quality: Optional[int] = None
+    output_video_fps: Optional[Union[float, str]] = None
+    skip_audio: Optional[bool] = None
 
 async def download_file(url: HttpUrl) -> Path:
     """从URL下载文件到临时目录"""
@@ -103,10 +108,16 @@ def setup_process_state(args: Args) -> None:
     # 先应用默认设置
     init_api_default_settings()
     
-    # 再应用自定义参数
+    # 确保processors不为空
     processors = args.get('processors')
+    if not processors:
+        processors = ['face_swapper']  # 设置默认处理器
+    
+    # 设置处理器
     if isinstance(processors, list):
         state_manager.set_item('processors', [p.value if isinstance(p, ProcessorType) else p for p in processors])
+    else:
+        state_manager.set_item('processors', [processors])
     
     # 设置路径
     state_manager.set_item('source_paths', [args.get('source_path')] if args.get('source_path') else [])
@@ -121,7 +132,7 @@ def setup_process_state(args: Args) -> None:
 
 def init_api_default_settings():
     """初始化API默认设置"""
-    # 基础设置
+    # 基础置
     state_manager.set_item('execution_providers', ['cpu'])
     state_manager.set_item('processors', ['face_swapper'])
     
@@ -201,6 +212,21 @@ async def headless_process_url(request: HeadlessUrlRequest):
             
         if request.trim_frame_end is not None:
             args['trim_frame_end'] = request.trim_frame_end
+            
+        if request.face_enhancer_model is not None:
+            args['face_enhancer_model'] = request.face_enhancer_model
+            
+        if request.face_enhancer_blend is not None:
+            args['face_enhancer_blend'] = request.face_enhancer_blend
+            
+        if request.output_video_quality is not None:
+            args['output_video_quality'] = request.output_video_quality
+            
+        if request.output_video_fps is not None:
+            args['output_video_fps'] = request.output_video_fps
+            
+        if request.skip_audio is not None:
+            args['skip_audio'] = request.skip_audio
             
         setup_process_state(args)
         error_code = process_headless(args)
