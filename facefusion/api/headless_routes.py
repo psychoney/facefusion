@@ -14,12 +14,18 @@ from facefusion import process_manager, state_manager
 from facefusion.core import process_headless
 from facefusion.typing import Args
 from facefusion.temp_helper import clear_temp_directory
+from facefusion.filesystem import get_temp_directory_path
 
-# 创建临时和输出目录
+# 创建必要的目录
 TEMP_DIR = Path("temp")
-OUTPUT_DIR = Path("output") 
-TEMP_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR = Path("output")
+JOBS_DIR = Path("jobs")
+
+for directory in [TEMP_DIR, OUTPUT_DIR, JOBS_DIR]:
+    directory.mkdir(exist_ok=True)
+    
+# 设置jobs目录路径
+state_manager.set_item('jobs_directory_path', str(JOBS_DIR))
 
 class ProcessorType(str, Enum):
     face_swapper = 'face_swapper'
@@ -88,6 +94,12 @@ def cleanup_files(*paths: Path) -> None:
     except Exception as e:
         logger.error(f"清理文件失败: {str(e)}\n{traceback.format_exc()}")
 
+def setup_process_state(args: Args) -> None:
+    state_manager.set_item('source_paths', [args.get('source_path')] if args.get('source_path') else [])
+    state_manager.set_item('target_path', args['target_path'])
+    state_manager.set_item('output_path', args['output_path'])
+    state_manager.set_item('processors', args['processors'])
+
 @app.post("/headless/url")
 async def headless_process_url(request: HeadlessUrlRequest):
     target_path = None
@@ -121,7 +133,7 @@ async def headless_process_url(request: HeadlessUrlRequest):
         if request.trim_frame_end is not None:
             args['trim_frame_end'] = request.trim_frame_end
             
-        # 调用处理
+        setup_process_state(args)
         error_code = process_headless(args)
         
         if error_code != 0:
@@ -185,7 +197,7 @@ async def headless_process_upload(
         if trim_frame_end is not None:
             args['trim_frame_end'] = trim_frame_end
             
-        # 调用处理
+        setup_process_state(args)
         error_code = process_headless(args)
         
         if error_code != 0:
