@@ -64,15 +64,24 @@ def get_output_path(filename: str) -> str:
 
 app = FastAPI()
 
+def cleanup_files(*paths: Path) -> None:
+    """清理临时文件"""
+    process_manager.end()
+    if state_manager.get_item('target_path'):
+        clear_temp_directory(state_manager.get_item('target_path'))
+    for path in paths:
+        if path and path.exists():
+            path.unlink()
+
 @app.post("/headless/url")
 async def headless_process_url(request: HeadlessUrlRequest):
-    """通过URL处理媒体文件"""
+    target_path = None
+    source_path = None
     try:
         # 下载目标文件
         target_path = await download_file(request.target_url)
         
         # 下载源文件(如果有)
-        source_path = None
         if request.source_url:
             source_path = await download_file(request.source_url)
             
@@ -111,10 +120,10 @@ async def headless_process_url(request: HeadlessUrlRequest):
         raise HTTPException(status_code=500, detail=str(e))
         
     finally:
-        # 清理进程和临时文件
-        process_manager.end()
+        # 清理临时文件
+        cleanup_files(source_path, target_path)
 
-@app.post("/headless/upload")
+@app.post("/headless/upload") 
 async def headless_process_upload(
     processors: List[ProcessorType],
     target: UploadFile = File(...),
@@ -122,7 +131,8 @@ async def headless_process_upload(
     trim_frame_start: Optional[int] = Form(None),
     trim_frame_end: Optional[int] = Form(None)
 ):
-    """通过文件上传处理媒体文件"""
+    target_path = None
+    source_path = None
     try:
         # 保存目标文件
         target_path = TEMP_DIR / target.filename
@@ -130,7 +140,6 @@ async def headless_process_upload(
             shutil.copyfileobj(target.file, f)
             
         # 保存源文件(如果有)
-        source_path = None
         if source:
             source_path = TEMP_DIR / source.filename
             with open(source_path, "wb") as f:
@@ -171,5 +180,5 @@ async def headless_process_upload(
         raise HTTPException(status_code=500, detail=str(e))
         
     finally:
-        # 清理进程和临时文件
-        process_manager.end()
+        # 清理临时文件
+        cleanup_files(source_path, target_path)
