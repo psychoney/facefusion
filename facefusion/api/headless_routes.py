@@ -15,6 +15,7 @@ from facefusion.core import process_headless
 from facefusion.typing import Args
 from facefusion.temp_helper import clear_temp_directory
 from facefusion.temp_helper import get_temp_directory_path
+from facefusion.jobs import job_manager
 
 # 创建必要的目录
 TEMP_DIR = Path("temp")
@@ -24,6 +25,9 @@ JOBS_DIR = Path("jobs")
 for directory in [TEMP_DIR, OUTPUT_DIR, JOBS_DIR]:
     directory.mkdir(exist_ok=True)
     
+# 初始化jobs目录
+job_manager.init_jobs(str(JOBS_DIR))
+
 # 设置jobs目录路径
 state_manager.set_item('jobs_directory_path', str(JOBS_DIR))
 
