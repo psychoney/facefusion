@@ -100,17 +100,74 @@ def cleanup_files(*paths: Path) -> None:
 
 def setup_process_state(args: Args) -> None:
     """设置处理状态"""
-    # 确保processors是列表类型
+    # 先应用默认设置
+    init_api_default_settings()
+    
+    # 再应用自定义参数
     processors = args.get('processors')
     if isinstance(processors, list):
         state_manager.set_item('processors', [p.value if isinstance(p, ProcessorType) else p for p in processors])
-    else:
-        state_manager.set_item('processors', [])
-        
-    # 设置其他状态
+    
+    # 设置路径
     state_manager.set_item('source_paths', [args.get('source_path')] if args.get('source_path') else [])
     state_manager.set_item('target_path', args['target_path'])
     state_manager.set_item('output_path', args['output_path'])
+    
+    # 应用其他可选参数
+    for key in ['face_enhancer_model', 'face_enhancer_blend', 
+                'output_video_quality', 'output_video_fps', 'skip_audio']:
+        if args.get(key) is not None:
+            state_manager.set_item(key, args[key])
+
+def init_api_default_settings():
+    """初始化API默认设置"""
+    # 基础设置
+    state_manager.set_item('execution_providers', ['cpu'])
+    state_manager.set_item('processors', ['face_swapper'])
+    
+    # 人脸检测相关
+    state_manager.set_item('face_detector_model', 'retinaface')
+    state_manager.set_item('face_detector_size', '640x640')
+    state_manager.set_item('face_detector_score', 0.5)
+    state_manager.set_item('face_detector_angles', [0])
+    
+    # 人脸标记相关
+    state_manager.set_item('face_landmarker_model', '2dfan4')
+    state_manager.set_item('face_landmarker_score', 0.5)
+    
+    # 人脸选择相关
+    state_manager.set_item('face_selector_mode', 'reference')
+    state_manager.set_item('face_selector_order', 'large-small')
+    state_manager.set_item('reference_face_position', 0)
+    state_manager.set_item('reference_face_distance', 0.6)
+    
+    # 人脸增强相关
+    state_manager.set_item('face_enhancer_model', 'gfpgan_1.4')
+    state_manager.set_item('face_enhancer_blend', 80)
+    
+    # 人脸编辑相关
+    state_manager.set_item('face_editor_model', 'live_portrait')
+    
+    # 帧处理相关
+    state_manager.set_item('frame_colorizer_model', 'ddcolor')
+    state_manager.set_item('frame_colorizer_size', '256x256')
+    state_manager.set_item('frame_colorizer_blend', 100)
+    
+    # 输出相关
+    state_manager.set_item('output_image_quality', 90)
+    state_manager.set_item('output_image_resolution', 'source')
+    state_manager.set_item('output_video_encoder', 'libx264')
+    state_manager.set_item('output_video_quality', 80)
+
+def validate_args(args: Args) -> None:
+    """验证参数有效性"""
+    if args.get('output_video_quality') is not None:
+        if not 0 <= args['output_video_quality'] <= 100:
+            raise HTTPException(status_code=400, detail="output_video_quality must be between 0 and 100")
+            
+    if args.get('face_enhancer_blend') is not None:
+        if not 0 <= args['face_enhancer_blend'] <= 100:
+            raise HTTPException(status_code=400, detail="face_enhancer_blend must be between 0 and 100")
 
 @app.post("/headless/url")
 async def headless_process_url(request: HeadlessUrlRequest):
@@ -227,3 +284,8 @@ async def headless_process_upload(
     finally:
         # 清理临时文件
         cleanup_files(source_path, target_path)
+
+@app.on_event("startup")
+async def startup_event():
+    """API 启动时的初始化事件"""
+    init_api_default_settings()
