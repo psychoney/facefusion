@@ -61,7 +61,6 @@ def run_command(target: str, sources: List[str], output_file_path: str, output_f
     logger.info(f"执行命令: {' '.join(command)}")
     
     try:
-        # 捕获命令的输出
         result = subprocess.run(
             command,
             check=True,
@@ -70,6 +69,13 @@ def run_command(target: str, sources: List[str], output_file_path: str, output_f
         )
         logger.info(f"命令执行成功，返回码：{result.returncode}")
         logger.debug(f"命令输出：\n{result.stdout}")
+        
+        if not os.path.exists(output_file_path):
+            error_msg = f"输出文件未生成: {output_file_path}"
+            logger.error(error_msg)
+            raise HTTPException(status_code=500, detail=error_msg)
+            
+        return FileResponse(output_file_path, filename=output_file_name)
         
     except subprocess.CalledProcessError as e:
         logger.error(f"命令执行失败，返回码：{e.returncode}")
@@ -85,13 +91,6 @@ def run_command(target: str, sources: List[str], output_file_path: str, output_f
                 "stdout": e.stdout
             }
         )
-    
-    if not os.path.exists(output_file_path):
-        error_msg = f"输出文件未生成: {output_file_path}"
-        logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=error_msg)
-        
-    return FileResponse(output_file_path, filename=output_file_name)
 
 @app.post("/process-files")
 async def process_files(target: UploadFile = File(...), sources: List[UploadFile] = File(...)):
@@ -120,8 +119,8 @@ async def process_files(target: UploadFile = File(...), sources: List[UploadFile
         output_file_path = os.path.join(TEMP_DIR, f"output_{target.filename}")
         logger.debug(f"输出文件路径: {output_file_path}")
         
-        # 调用 run_command
-        return await run_command(target_path, source_paths, output_file_path, f"output_{target.filename}")
+        # 调用 run_command (移除 await)
+        return run_command(target_path, source_paths, output_file_path, f"output_{target.filename}")
         
     except Exception as e:
         error_detail = {
