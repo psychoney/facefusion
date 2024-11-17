@@ -7,10 +7,13 @@ from pathlib import Path
 import aiohttp
 import asyncio
 import os
+import traceback
+import logging
 
 from facefusion import process_manager, state_manager
 from facefusion.core import process_headless
 from facefusion.typing import Args
+from facefusion.temp_helper import clear_temp_directory
 
 # 创建临时和输出目录
 TEMP_DIR = Path("temp")
@@ -64,20 +67,34 @@ def get_output_path(filename: str) -> str:
 
 app = FastAPI()
 
+logger = logging.getLogger(__name__)
+
 def cleanup_files(*paths: Path) -> None:
     """清理临时文件"""
-    process_manager.end()
-    if state_manager.get_item('target_path'):
-        clear_temp_directory(state_manager.get_item('target_path'))
-    for path in paths:
-        if path and path.exists():
-            path.unlink()
+    try:
+        logger.debug("开始清理临时文件")
+        process_manager.end()
+        
+        target_path = state_manager.get_item('target_path')
+        if target_path:
+            logger.debug(f"清理目标文件临时目录: {target_path}")
+            clear_temp_directory(target_path)
+            
+        for path in paths:
+            if path and path.exists():
+                logger.debug(f"删除临时文件: {path}")
+                path.unlink()
+                
+    except Exception as e:
+        logger.error(f"清理文件失败: {str(e)}\n{traceback.format_exc()}")
 
 @app.post("/headless/url")
 async def headless_process_url(request: HeadlessUrlRequest):
     target_path = None
     source_path = None
     try:
+        logger.info(f"处理URL请求: target={request.target_url}, source={request.source_url}")
+        
         # 下载目标文件
         target_path = await download_file(request.target_url)
         
@@ -117,11 +134,15 @@ async def headless_process_url(request: HeadlessUrlRequest):
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = f"处理失败: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
         
     finally:
-        # 清理临时文件
-        cleanup_files(source_path, target_path)
+        try:
+            cleanup_files(source_path, target_path)
+        except Exception as e:
+            logger.error(f"清理文件失败: {str(e)}\n{traceback.format_exc()}")
 
 @app.post("/headless/upload") 
 async def headless_process_upload(
