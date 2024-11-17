@@ -111,10 +111,15 @@ def setup_process_state(args: Args) -> None:
     # 设置处理器 - 确保不为空且格式正确
     processors = args.get('processors', ['face_swapper'])
     logger.debug(f"Processors: {processors}")
+    if processors is None:
+        logger.error("处理器参数为 None，使用默认处理器 'face_swapper'")
+        processors = ['face_swapper']
+    
     if isinstance(processors, list):
         processor_list = [p.value if isinstance(p, ProcessorType) else p for p in processors]
     else:
         processor_list = [processors]
+    
     state_manager.set_item('processors', processor_list)
     
     # 设置路径
@@ -180,6 +185,7 @@ def validate_args(args: Args) -> None:
 
 @app.post("/headless/url")
 async def headless_process_url(request: HeadlessUrlRequest):
+    logger.info(f"处理URL请求: {request}")
     target_path = None
     source_path = None
     try:
@@ -191,10 +197,10 @@ async def headless_process_url(request: HeadlessUrlRequest):
         # 下载源文件(如果有)
         if request.source_url:
             source_path = await download_file(request.source_url)
-            
+        
         # 生成输出路径
         output_path = get_output_path(target_path.name)
-            
+        
         # 构建参数
         args: Args = {
             'processors': [p.value for p in request.processors],
@@ -205,34 +211,37 @@ async def headless_process_url(request: HeadlessUrlRequest):
         
         if source_path:
             args['source_path'] = str(source_path)
-            
+        
+        # 添加日志记录以检查每个参数
+        logger.debug(f"源路径: {args.get('source_path')}, 目标路径: {args['target_path']}, 输出路径: {args['output_path']}")
+        
         if request.trim_frame_start is not None:
             args['trim_frame_start'] = request.trim_frame_start
-            
+        
         if request.trim_frame_end is not None:
             args['trim_frame_end'] = request.trim_frame_end
-            
+        
         if request.face_enhancer_model is not None:
             args['face_enhancer_model'] = request.face_enhancer_model
-            
+        
         if request.face_enhancer_blend is not None:
             args['face_enhancer_blend'] = request.face_enhancer_blend
-            
+        
         if request.output_video_quality is not None:
             args['output_video_quality'] = request.output_video_quality
-            
+        
         if request.output_video_fps is not None:
             args['output_video_fps'] = request.output_video_fps
-            
+        
         if request.skip_audio is not None:
             args['skip_audio'] = request.skip_audio
-            
+        
         setup_process_state(args)
         error_code = process_headless(args)
         
         if error_code != 0:
             raise HTTPException(status_code=500, detail=f"处理失败,错误码:{error_code}")
-            
+        
         return {
             "message": "处理成功", 
             "output_path": output_path,
@@ -243,7 +252,7 @@ async def headless_process_url(request: HeadlessUrlRequest):
         error_msg = f"处理失败: {str(e)}\n{traceback.format_exc()}"
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
-        
+    
     finally:
         try:
             cleanup_files(source_path, target_path)
