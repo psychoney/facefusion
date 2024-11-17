@@ -1,4 +1,6 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from typing import Optional
+from enum import Enum
 from fastapi.responses import FileResponse
 import shutil
 from pathlib import Path
@@ -18,10 +20,20 @@ app = FastAPI()
 TEMP_DIR = Path("temp")
 TEMP_DIR.mkdir(exist_ok=True)
 
+class FaceDetectorModel(str, Enum):
+    retinaface = 'retinaface'
+    yunet = 'yunet'
+    
+class FaceRecognizerModel(str, Enum):
+    arcface = 'arcface_inswapper'
+    buffalo = 'buffalo_l'
+
 @app.post("/process")
 async def process_media(
     source: UploadFile = File(...),
     target: UploadFile = File(...),
+    face_detector_model: Optional[FaceDetectorModel] = None,
+    face_recognizer_model: Optional[FaceRecognizerModel] = None,
 ):
     try:
         # 保存上传的文件
@@ -41,61 +53,43 @@ async def process_media(
         
         # 设置处理器
         state_manager.set_item('processors', ['face_swapper'])
-        # 设置执行提供程序
-        state_manager.set_item('execution_providers', ['tensorrt'])
-        # 确保模型文件存在
-        if not (detector_pre_check() and recognizer_pre_check() and landmarker_pre_check()):
-            raise HTTPException(status_code=500, detail="模型文件下载失败")
-        # 设置人脸检测参数
-        state_manager.set_item('face_detector_model', 'retinaface')
-        state_manager.set_item('face_detector_size', '640x640')
-        state_manager.set_item('face_detector_score', 0.5)
-        state_manager.set_item('face_detector_angles', [0])
         
-        # 设置人脸识别参数
-        state_manager.set_item('face_recognizer_model', 'arcface_inswapper')
-        # 设置输入名称
-        state_manager.set_item('input_name', 'input.1')
-        # 设置输出参数
-        state_manager.set_item('output_image_quality', 90)
-        state_manager.set_item('output_image_resolution', 'source')
-        state_manager.set_item('output_video_encoder', 'libx264')
-        state_manager.set_item('output_video_quality', 90)
-        state_manager.set_item('output_video_resolution', 'source')
-        state_manager.set_item('output_video_fps', 'source')
+        # 根据文件类型自动设置其他参数
+        if face_detector_model:
+            state_manager.set_item('face_detector_model', face_detector_model)
+            
+        if face_recognizer_model:
+            state_manager.set_item('face_recognizer_model', face_recognizer_model)
+            
+        # 其他参数使用默认值
+        update_default_settings()
         
-        # 设置其他必要参数
-        state_manager.set_item('face_mask_types', ['box'])
-        state_manager.set_item('face_mask_blur', 0.3)
-        state_manager.set_item('face_mask_padding', [0, 0, 0, 0])
-        state_manager.set_item('face_mask_regions', ['skin'])
-        state_manager.set_item('face_selector_mode', 'one')
-        state_manager.set_item('face_landmarker_model', '2dfan4')
-        state_manager.set_item('temp_frame_format', 'jpg')
-        state_manager.set_item('video_memory_strategy', 'strict')
         # 处理媒体文件
         error_code = conditional_process()
         
         if error_code != 0:
             raise HTTPException(status_code=500, detail=f"处理失败,错误码:{error_code}")
             
-        if not output_path.exists():
-            raise HTTPException(status_code=500, detail="输出文件未生成")
-            
-        return FileResponse(
-            output_path,
-            filename=f"output_{target.filename}"
-        )
-        
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        return FileResponse(output_path, filename=f"output_{target.filename}")
         
     finally:
-        # 清理临时文件
-        process_manager.end()
-        if state_manager.get_item('target_path'):
-            clear_temp_directory(state_manager.get_item('target_path'))
-        for file in [source_path, target_path, output_path]:
-            if file.exists():
-                file.unlink()
+        cleanup_files()
+
+def update_default_settings():
+    """更新默认设置，参考 gradio 组件的默认值"""
+    # 参考 face_detector.py 的设置
+    state_manager.set_item('face_detector_size', '640x640')
+    state_manager.set_item('face_detector_score', 0.5)
+    
+    # 参考 output_options.py 的设置
+    state_manager.set_item('output_image_quality', 90)
+    state_manager.set_item('output_image_resolution', 'source')
+
+def cleanup_files():
+    # 清理临时文件
+    process_manager.end()
+    if state_manager.get_item('target_path'):
+        clear_temp_directory(state_manager.get_item('target_path'))
+    for file in [source_path, target_path, output_path]:
+        if file.exists():
+            file.unlink()
