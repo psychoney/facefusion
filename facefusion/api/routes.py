@@ -77,6 +77,9 @@ async def process_media(
 
 def update_default_settings():
     """更新默认设置，参考 gradio 组件的默认值"""
+    # 设置执行提供程序
+    state_manager.set_item('execution_providers', ['cpu'])
+    
     # 参考 face_detector.py 的设置
     state_manager.set_item('face_detector_model', 'retinaface')
     state_manager.set_item('face_detector_size', '640x640')
