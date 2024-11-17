@@ -119,9 +119,15 @@ async def process_files(target: UploadFile = File(...), sources: List[UploadFile
         output_file_path = os.path.join(TEMP_DIR, f"output_{target.filename}")
         logger.debug(f"输出文件路径: {output_file_path}")
         
-        # 调用 run_command (移除 await)
-        return run_command(target_path, source_paths, output_file_path, f"output_{target.filename}")
+        # 调用 run_command
+        response = run_command(target_path, source_paths, output_file_path, f"output_{target.filename}")
         
+        # 确保文件存在后再返回
+        if os.path.exists(output_file_path):
+            return response
+        else:
+            raise HTTPException(status_code=500, detail="处理后的文件不存在")
+            
     except Exception as e:
         error_detail = {
             "message": str(e),
@@ -131,5 +137,13 @@ async def process_files(target: UploadFile = File(...), sources: List[UploadFile
         logger.error(error_detail)
         raise HTTPException(status_code=500, detail=error_detail)
     finally:
-        # 清理临时文件
-        cleanup_files(target_path, *source_paths, output_file_path)
+        # 等待一段时间后再清理文件
+        try:
+            if response and os.path.exists(output_file_path):
+                # 只清理源文件和目标文件，保留输出文件
+                cleanup_files(target_path, *source_paths)
+            else:
+                # 如果处理失败，清理所有文件
+                cleanup_files(target_path, *source_paths, output_file_path)
+        except Exception as e:
+            logger.error(f"清理文件时发生错误: {str(e)}")
