@@ -6,7 +6,6 @@ import shutil
 from pathlib import Path
 import aiohttp
 import asyncio
-import tempfile
 import os
 
 from facefusion import process_manager, state_manager
