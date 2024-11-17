@@ -9,7 +9,7 @@ import traceback
 
 # 配置日志
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
@@ -40,7 +40,7 @@ def cleanup_files(*files):
         try:
             if os.path.exists(file):
                 os.remove(file)
-                logger.debug(f"清理文件: {file}")
+                logger.info(f"清理文件: {file}")
         except Exception as e:
             logger.error(f"清理文件失败 {file}: {str(e)}")
             logger.error(traceback.format_exc())
@@ -50,9 +50,8 @@ def run_command(target: str, sources: List[str], output_file_path: str, output_f
         'python', 'facefusion.py',
         'headless-run',
         '-j', JOBS_DIR,
-        '--processors', 'face_swapper',
         '-t', target,
-        '-o', output_file_path
+        '-o', output_file_path,
     ]
 
     for source in sources:
@@ -68,7 +67,7 @@ def run_command(target: str, sources: List[str], output_file_path: str, output_f
             text=True
         )
         logger.info(f"命令执行成功，返回码：{result.returncode}")
-        logger.debug(f"命令输出：\n{result.stdout}")
+        logger.info(f"命令输出：\n{result.stdout}")
         
         if not os.path.exists(output_file_path):
             error_msg = f"输出文件未生成: {output_file_path}"
@@ -105,7 +104,7 @@ async def process_files(target: UploadFile = File(...), sources: List[UploadFile
         target_path = os.path.join(TEMP_DIR, target.filename)
         with open(target_path, "wb") as f:
             shutil.copyfileobj(target.file, f)
-        logger.debug(f"目标文件已保存: {target_path}")
+        logger.info(f"目标文件已保存: {target_path}")
 
         # 保存源文件
         for source in sources:
@@ -113,11 +112,11 @@ async def process_files(target: UploadFile = File(...), sources: List[UploadFile
             with open(source_path, "wb") as f:
                 shutil.copyfileobj(source.file, f)
             source_paths.append(source_path)
-            logger.debug(f"源文件已保存: {source_path}")
+            logger.info(f"源文件已保存: {source_path}")
 
         # 设置输出文件路径
         output_file_path = os.path.join(TEMP_DIR, f"output_{target.filename}")
-        logger.debug(f"输出文件路径: {output_file_path}")
+        logger.info(f"输出文件路径: {output_file_path}")
         
         # 调用 run_command
         response = run_command(target_path, source_paths, output_file_path, f"output_{target.filename}")
