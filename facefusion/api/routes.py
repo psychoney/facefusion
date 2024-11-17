@@ -42,7 +42,7 @@ async def process_media(
         # 设置处理器
         state_manager.set_item('processors', ['face_swapper'])
         # 设置执行提供程序
-        state_manager.set_item('execution_providers', ['cuda'])
+        state_manager.set_item('execution_providers', ['tensorrt'])
         # 确保模型文件存在
         if not (detector_pre_check() and recognizer_pre_check() and landmarker_pre_check()):
             raise HTTPException(status_code=500, detail="模型文件下载失败")
@@ -54,10 +54,11 @@ async def process_media(
         
         # 设置人脸识别参数
         state_manager.set_item('face_recognizer_model', 'arcface_inswapper')
-        
+        # 设置输入名称
+        state_manager.set_item('input_name', 'input.1')
         # 设置输出参数
         state_manager.set_item('output_image_quality', 90)
-        state_manager.set_item('output_image_resolution', 'source') 
+        state_manager.set_item('output_image_resolution', 'source')
         state_manager.set_item('output_video_encoder', 'libx264')
         state_manager.set_item('output_video_quality', 90)
         state_manager.set_item('output_video_resolution', 'source')
