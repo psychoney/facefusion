@@ -110,6 +110,7 @@ def setup_process_state(args: Args) -> None:
     
     # 设置处理器 - 确保不为空且格式正确
     processors = args.get('processors', ['face_swapper'])
+    logger.debug(f"Processors: {processors}")
     if isinstance(processors, list):
         processor_list = [p.value if isinstance(p, ProcessorType) else p for p in processors]
     else:
@@ -200,6 +201,7 @@ async def headless_process_url(request: HeadlessUrlRequest):
             'target_path': str(target_path),
             'output_path': output_path
         }
+        logger.debug(f"构建参数: {args}")
         
         if source_path:
             args['source_path'] = str(source_path)
