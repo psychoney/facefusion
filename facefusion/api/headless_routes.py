@@ -201,7 +201,7 @@ async def headless_process_url(request: HeadlessUrlRequest):
             'target_path': str(target_path),
             'output_path': output_path
         }
-        logger.debug(f"构建参数: {args}")
+        logger.info(f"构建参数: {args}")
         
         if source_path:
             args['source_path'] = str(source_path)
