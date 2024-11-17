@@ -99,10 +99,18 @@ def cleanup_files(*paths: Path) -> None:
         logger.error(f"清理文件失败: {str(e)}\n{traceback.format_exc()}")
 
 def setup_process_state(args: Args) -> None:
+    """设置处理状态"""
+    # 确保processors是列表类型
+    processors = args.get('processors')
+    if isinstance(processors, list):
+        state_manager.set_item('processors', [p.value if isinstance(p, ProcessorType) else p for p in processors])
+    else:
+        state_manager.set_item('processors', [])
+        
+    # 设置其他状态
     state_manager.set_item('source_paths', [args.get('source_path')] if args.get('source_path') else [])
     state_manager.set_item('target_path', args['target_path'])
     state_manager.set_item('output_path', args['output_path'])
-    state_manager.set_item('processors', args['processors'])
 
 @app.post("/headless/url")
 async def headless_process_url(request: HeadlessUrlRequest):
