@@ -35,12 +35,12 @@ async def process_media(
     face_detector_model: Optional[FaceDetectorModel] = None,
     face_recognizer_model: Optional[FaceRecognizerModel] = None,
 ):
+    source_path = TEMP_DIR / source.filename
+    target_path = TEMP_DIR / target.filename
+    output_path = TEMP_DIR / f"output_{target.filename}"
+    
     try:
         # 保存上传的文件
-        source_path = TEMP_DIR / source.filename
-        target_path = TEMP_DIR / target.filename
-        output_path = TEMP_DIR / f"output_{target.filename}"
-        
         with open(source_path, "wb") as f:
             shutil.copyfileobj(source.file, f)
         with open(target_path, "wb") as f:
@@ -73,7 +73,7 @@ async def process_media(
         return FileResponse(output_path, filename=f"output_{target.filename}")
         
     finally:
-        cleanup_files()
+        cleanup_files(source_path, target_path, output_path)
 
 def update_default_settings():
     """更新默认设置，参考 gradio 组件的默认值"""
@@ -85,7 +85,7 @@ def update_default_settings():
     state_manager.set_item('output_image_quality', 90)
     state_manager.set_item('output_image_resolution', 'source')
 
-def cleanup_files():
+def cleanup_files(source_path: Path, target_path: Path, output_path: Path):
     # 清理临时文件
     process_manager.end()
     if state_manager.get_item('target_path'):
