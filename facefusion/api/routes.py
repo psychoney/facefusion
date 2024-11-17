@@ -78,12 +78,38 @@ async def process_media(
 def update_default_settings():
     """更新默认设置，参考 gradio 组件的默认值"""
     # 参考 face_detector.py 的设置
+    state_manager.set_item('face_detector_model', 'retinaface')
     state_manager.set_item('face_detector_size', '640x640')
     state_manager.set_item('face_detector_score', 0.5)
+    state_manager.set_item('face_detector_angles', [0])
+    
+    # 参考 face_landmarker.py 的设置
+    state_manager.set_item('face_landmarker_model', '2dfan4')
+    state_manager.set_item('face_landmarker_score', 0.5)
+    
+    # 参考 face_selector.py 的设置
+    state_manager.set_item('face_selector_mode', 'one')
+    state_manager.set_item('face_selector_order', 'left-right')
+    state_manager.set_item('reference_face_position', 0)
+    state_manager.set_item('reference_face_distance', 0.6)
+    
+    # 参考 face_masker.py 的设置
+    state_manager.set_item('face_mask_types', ['box'])
+    state_manager.set_item('face_mask_blur', 0.3)
+    state_manager.set_item('face_mask_padding', [0, 0, 0, 0])
+    state_manager.set_item('face_mask_regions', ['skin'])
+    
+    # 参考 frame_extraction.py 的设置
+    state_manager.set_item('temp_frame_format', 'jpg')
+    state_manager.set_item('keep_temp', False)
     
     # 参考 output_options.py 的设置
     state_manager.set_item('output_image_quality', 90)
     state_manager.set_item('output_image_resolution', 'source')
+    state_manager.set_item('output_video_encoder', 'libx264')
+    state_manager.set_item('output_video_quality', 90)
+    state_manager.set_item('output_video_resolution', 'source')
+    state_manager.set_item('output_video_fps', 'source')
 
 def cleanup_files(source_path: Path, target_path: Path, output_path: Path):
     # 清理临时文件
