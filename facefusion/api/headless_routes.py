@@ -14,7 +14,7 @@ from facefusion import process_manager, state_manager
 from facefusion.core import process_headless
 from facefusion.typing import Args
 from facefusion.temp_helper import clear_temp_directory
-from facefusion.filesystem import get_temp_directory_path
+from facefusion.temp_helper import get_temp_directory_path
 
 # 创建必要的目录
 TEMP_DIR = Path("temp")
