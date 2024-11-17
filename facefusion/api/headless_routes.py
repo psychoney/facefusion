@@ -199,7 +199,7 @@ async def headless_process_url(request: HeadlessUrlRequest):
             
         # 构建参数
         args: Args = {
-            'processors': request.processors,
+            'processors': [p.value for p in request.processors],
             'target_path': str(target_path),
             'output_path': output_path
         }
