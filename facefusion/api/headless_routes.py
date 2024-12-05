@@ -168,7 +168,7 @@ async def process_local_files(request: LocalFileRequest):
             raise HTTPException(status_code=400, detail=f"目标文件不存在: {request.targetPath}")
             
         # 设置输出文件路径
-        output_dir = os.path.join("/root/image", request.taskCode)
+        output_dir = os.path.join("/home/facefusion/output", request.taskCode)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             
@@ -184,7 +184,7 @@ async def process_local_files(request: LocalFileRequest):
         )
         
         return {
-            "outputPath": output_dir,
+            "outputPath": output_file_path,
             "status": "success"
         }
         
