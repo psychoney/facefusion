@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import os
 import traceback
+from pydantic import BaseModel
 
 # 配置日志
 logging.basicConfig(
@@ -146,3 +147,52 @@ async def process_files(target: UploadFile = File(...), sources: List[UploadFile
                 cleanup_files(target_path, *source_paths, output_file_path)
         except Exception as e:
             logger.error(f"清理文件时发生错误: {str(e)}")
+
+# 定义请求模型
+class LocalFileRequest(BaseModel):
+    sourcePath: str
+    targetPath: str 
+    taskCode: str
+
+@app.post("/process-local-files")
+async def process_local_files(request: LocalFileRequest):
+    try:
+        logger.info(f"接收到本地文件处理请求 - 任务编号: {request.taskCode}")
+        logger.info(f"源文件路径: {request.sourcePath}")
+        logger.info(f"目标文件路径: {request.targetPath}")
+        
+        # 验证文件是否存在
+        if not os.path.exists(request.sourcePath):
+            raise HTTPException(status_code=400, detail=f"源文件不存在: {request.sourcePath}")
+        if not os.path.exists(request.targetPath):
+            raise HTTPException(status_code=400, detail=f"目标文件不存在: {request.targetPath}")
+            
+        # 设置输出文件路径
+        output_dir = os.path.join("/root/image", request.taskCode)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            
+        target_filename = os.path.basename(request.targetPath)
+        output_file_path = os.path.join(output_dir, f"output_{target_filename}")
+        
+        # 调用处理函数
+        run_command(
+            target=request.targetPath,
+            sources=[request.sourcePath],
+            output_file_path=output_file_path,
+            output_file_name=f"output_{target_filename}"
+        )
+        
+        return {
+            "outputPath": output_dir,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        error_detail = {
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }
+        logger.error("处理本地文件请求时发生错误:")
+        logger.error(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
